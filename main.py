@@ -1,8 +1,6 @@
 import json
 import requests
 
-
-
 class VK:
     url = 'https://api.vk.com/method/'
     version = '5.131'
@@ -34,16 +32,29 @@ class VK:
 
 
 class YaDisk:
-    with open('yandex_token.txt', 'r') as file_object_1:
-        token = file_object_1.read().strip()
+    ya_url = "https://cloud-api.yandex.net/v1/disk/resources/"
 
     def __init__(self, token):
         self.token = token
 
-    def headers(self):
+    def get_headers(self):
         return {'Content-Type': 'application/json', 'Authorization': 'OAuth {}'.format(self.token)}
 
-    def vk_photo(self, file):
+    def add_photo_folder(self, folder_name):
+        headers = self.get_headers()
+        params = {'path': folder_name}
+        response = requests.put(self.ya_url, headers=headers, params=params)
+        if response.status_code == 201:
+            print(f'\nПапка {folder_name} создана\n')
+            return folder_name
+        elif response.status_code == 409:
+            print(f'\nПапка {folder_name} уже существует.\n')
+            return folder_name
+        elif response.status_code >= 400:
+            print(f'Ошибка {response.status_code}')
+        return folder_name
+
+    def get_vk_photo(self, file):
         vk_photo_file = []
         for value in file:
             vk_photo_file.append(dict([('file_name', value), ('size', file[value][1])]))
@@ -51,20 +62,13 @@ class YaDisk:
             json.dump(vk_photo_file, f)
         return vk_photo_file
 
-    def photo_folder(self):
-        folder_url = "https://cloud-api.yandex.net/v1/disk/resources"
-        headers = self.headers()
-        params = {'path': 'vk_photo'}
-        response = requests.put(folder_url, headers=headers, params=params)
-        return response.json()
-
-    def upload(self, file):
-        upload_url = "https://cloud-api.yandex.net/v1/disk/resources/upload"
-        self.photo_folder()
-        headers = self.headers()
+    def upload_photo(self, file):
+        upload_url = self.ya_url + "upload"
+        self.add_photo_folder(folder_name)
+        headers = self.get_headers()
         progress_bar = 1
         for photo in file:
-            params = {'url': file[photo][0], 'path': f'photos/{photo}.jpg'}
+            params = {'url': file[photo][0], 'path': f'{folder_name}/{photo}.jpg'}
             response = requests.post(upload_url, headers=headers, params=params)
             print(f'Загрузка {progress_bar} фото из {len(file)}, код ответа: {response.status_code}')
             progress_bar += 1
@@ -72,14 +76,15 @@ class YaDisk:
                 print(f'Ошибка загрузки! Код ошибки: {response.status_code}')
             else:
                 print('Загрузка завершена')
-        return self.photo_folder(file)
+        return self.add_photo_folder(file)
 
 
-#
 if __name__ == '__main__':
     vk_id = VK(str(input('id пользователя VK: ')))
     count = int(input('Введите количество фото: '))
-    yadisk = YaDisk(YaDisk.token)
-    print(yadisk.upload(vk_id.photos_get()))
-
+    with open('yandex_token.txt', 'r') as file_object_1:
+        token = file_object_1.read().strip()
+    ya_disk = YaDisk(token)
+    folder_name = ya_disk.add_photo_folder(input('Введите название папки: '))
+    ya_disk.upload_photo(vk_id.photos_get())
 
