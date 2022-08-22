@@ -1,21 +1,22 @@
 import json
 import requests
 
+
 class VK:
     url = 'https://api.vk.com/method/'
     version = '5.131'
     with open('vk_token.txt', 'r') as file_object:
         vk_token = file_object.read().strip()
 
-    def __init__(self, id):
-        self.id = id
+    def __init__(self, vk_id):
+        self.vk_id = vk_id
 
     def photos_get(self):
         photos_url = self.url + 'photos.get'
         photos_params = {'access_token': self.vk_token,
                          'v': self.version,
                          'count': count,
-                         'user_id': self.id,
+                         'user_id': self.vk_id,
                          'album_id': 'profile',
                          'extended': 1
                          }
@@ -36,6 +37,7 @@ class YaDisk:
 
     def __init__(self, token):
         self.token = token
+        self.ya_folder_name = input('Введите название папки ')
 
     def get_headers(self):
         return {'Content-Type': 'application/json', 'Authorization': 'OAuth {}'.format(self.token)}
@@ -64,11 +66,11 @@ class YaDisk:
 
     def upload_photo(self, file):
         upload_url = self.ya_url + "upload"
-        self.add_photo_folder(folder_name)
+        self.add_photo_folder(self.ya_folder_name)
         headers = self.get_headers()
         progress_bar = 1
         for photo in file:
-            params = {'url': file[photo][0], 'path': f'{folder_name}/{photo}.jpg'}
+            params = {'url': file[photo][0], 'path': f'{self.ya_folder_name}/{photo}.jpg'}
             response = requests.post(upload_url, headers=headers, params=params)
             print(f'Загрузка {progress_bar} фото из {len(file)}, код ответа: {response.status_code}')
             progress_bar += 1
@@ -76,15 +78,13 @@ class YaDisk:
                 print(f'Ошибка загрузки! Код ошибки: {response.status_code}')
             else:
                 print('Загрузка завершена')
-        return self.add_photo_folder(file)
+        return
 
 
 if __name__ == '__main__':
-    vk_id = VK(str(input('id пользователя VK: ')))
+    user_id = VK(str(input('id пользователя VK: ')))
     count = int(input('Введите количество фото: '))
     with open('yandex_token.txt', 'r') as file_object_1:
-        token = file_object_1.read().strip()
-    ya_disk = YaDisk(token)
-    folder_name = ya_disk.add_photo_folder(input('Введите название папки: '))
-    ya_disk.upload_photo(vk_id.photos_get())
-
+        ya_token = file_object_1.read().strip()
+    ya_disk = YaDisk(ya_token)
+    ya_disk.upload_photo(user_id.photos_get())
